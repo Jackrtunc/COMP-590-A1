@@ -21,7 +21,7 @@ use ffmpeg_sidecar::event::StreamTypeSpecificData::Video;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Make sure ffmpeg is installed
     ffmpeg_sidecar::download::auto_download().unwrap();
-    
+
     // Command line options
     // -verbose, -no_verbose                Default: -no_verbose
     // -report, -no_report                  Default: -report
@@ -122,7 +122,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Process pixels in row major order.
             for r in 0..height {
                 for c in 0..width {
-                    let pixel_index = (r * 1080 + c) as usize;
+                    let pixel_index = (r * width + c) as usize;
 
                     // Encode difference with same pixel in prior frame.
                     // Normalize and modulate difference to 8-bit range.
