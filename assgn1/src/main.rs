@@ -182,8 +182,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Set up initial prior frame as uniform medium gray
         let mut prior_frame = vec![128 as u8; (width * height) as usize];
-        let mut found_error = false;
 
+        'outer_loop: 
         for frame in iter.filter_frames() {
             if frame.frame_num < skip_count + count {
                 if verbose {
@@ -207,22 +207,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 c, r, current_frame[pixel_index], pixel_value
                             );
                             println!("Abandoning check of remaining frames");
-                            found_error = true;
-                            break;
+                            break 'outer_loop;
                         }
                     }
-                    if found_error {
-                        break;
-                    }
                 }
-                if found_error {
-                    break;
-                }
-
                 println!("correct.");
                 prior_frame = current_frame;
             } else {
-                break;
+                break 'outer_loop;
             }
         }
     }
