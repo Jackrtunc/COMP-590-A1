@@ -57,17 +57,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Run an FFmpeg command to decode video from inptu_file_path
     // Get output as grayscale (i.e., just the Y plane)
 
-    let mut iter = FfmpegCommand::new() // <- Builder API like `std::process::Command`
+    let mut iter = FfmpegCommand::new() // <- Builder API like `std::process::Command` 
         .input(input_file_path.to_str().unwrap())
         .format("rawvideo")
-        .pix_fmt("gray8")
-        .output("-")
-        .spawn()? // <- Ordinary `std::process::Child`
+        .pix_fmt("gray8") // ignore color in this assignment
+        .output("-") // output to stdout
+        .spawn()? // <- Ordinary `std::process::Child` 
         .iter()?; // <- Blocking iterator over logs and output
+
+    // Lets us iterate through a series of raw video frame data and handles this processing and iteration in another thread
+
+    // ? says if the function produces a result, go ahead and process as normal, if it produces an error, throw it, return type of main() reflects this throw 
 
     // Figure out geometry of frame.
     let mut width = 0;
     let mut height = 0;
+
+    // metadata includes different streams of the file (audio, video subtitles, etc.)
+    // trying to match these streams to the functions under the match (matches streams of type video to this function)
+    // assigns the stream to vid_stream
 
     let metadata = iter.collect_metadata()?;
     for i in 0..metadata.output_streams.len() {
@@ -108,6 +116,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Set up arithmetic coding context(s)
     let mut pixel_difference_pdf = VectorCountSymbolModel::new((0..=255).collect());
 
+    // difference between two 8 bit numbers can be represented as an 8 bit integer (forward difference around the circle)
+
     // Process frames
     for frame in iter.filter_frames() {
         if frame.frame_num < skip_count {
@@ -122,19 +132,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Process pixels in row major order.
             for r in 0..height {
                 for c in 0..width {
-                    let pixel_index = (r * width + c) as usize;
+                    let pixel_index = (r * width + c) as usize; // frame is actually a one dimensional vector
 
                     // Encode difference with same pixel in prior frame.
                     // Normalize and modulate difference to 8-bit range.
                     let pixel_difference = (((current_frame[pixel_index] as i32)
                         - (prior_frame[pixel_index] as i32))
-                        + 256)
-                        % 256;
+                        + 256) // takes every negative difference and turns it into a positive difference (da circle)
+                        % 256; // positive differences unaffected by the calculation
 
                     enc.encode(&pixel_difference, &pixel_difference_pdf, &mut bw);
 
                     // Update context
-                    pixel_difference_pdf.incr_count(&pixel_difference);
+                    pixel_difference_pdf.incr_count(&pixel_difference); // adaptive
                 }
             }
 

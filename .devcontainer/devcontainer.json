@@ -1,0 +1,14 @@
+{
+  "name": "Rust Dev Container",
+  "image": "mcr.microsoft.com/devcontainers/rust:latest",
+  "postCreateCommand": "rustc --version",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "github.copilot-chat",
+        "GitHub.copilot"
+      ]
+    }
+  }
+}
