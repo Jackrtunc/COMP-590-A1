@@ -1,3 +1,5 @@
+mod challenge;
+
 use std::env;
 use std::path::PathBuf;
 
