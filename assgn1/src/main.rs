@@ -195,7 +195,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let mut dec = Decoder::new();
 
-        let mut pixel_difference_pdf = VectorCountSymbolModel::new((0..=255).collect());
+        let mut region_map = RegionEncodingMap::new(height, width, 50);
 
         // Set up initial prior frame as uniform medium gray
         let mut prior_frame = vec![128 as u8; (width * height) as usize];
@@ -211,10 +211,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // Process pixels in row major order.
                 for r in 0..height {
                     for c in 0..width {
+                        let pixel = (r, c);
+                        let pixel_difference_pdf = region_map.get_symbol_model(pixel);
                         let pixel_index = (r * width + c) as usize;
                         let decoded_pixel_difference =
-                            dec.decode(&pixel_difference_pdf, &mut br).to_owned();
-                        pixel_difference_pdf.incr_count(&decoded_pixel_difference);
+                            dec.decode(pixel_difference_pdf, &mut br).to_owned();
+                        region_map.incr_count_regional(pixel, &decoded_pixel_difference);
 
                         let pixel_value =
                             (prior_frame[pixel_index] as i32 + decoded_pixel_difference) % 256;
