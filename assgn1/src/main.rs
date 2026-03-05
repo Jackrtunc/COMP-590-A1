@@ -1,5 +1,7 @@
 mod challenge;
 
+use challenge::RegionEncodingMap;
+
 use std::env;
 use std::path::PathBuf;
 
@@ -59,17 +61,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Run an FFmpeg command to decode video from inptu_file_path
     // Get output as grayscale (i.e., just the Y plane)
 
-    let mut iter = FfmpegCommand::new() // <- Builder API like `std::process::Command` 
+    let mut iter = FfmpegCommand::new() // <- Builder API like `std::process::Command`
         .input(input_file_path.to_str().unwrap())
         .format("rawvideo")
         .pix_fmt("gray8") // ignore color in this assignment
         .output("-") // output to stdout
-        .spawn()? // <- Ordinary `std::process::Child` 
+        .spawn()? // <- Ordinary `std::process::Child`
         .iter()?; // <- Blocking iterator over logs and output
 
     // Lets us iterate through a series of raw video frame data and handles this processing and iteration in another thread
 
-    // ? says if the function produces a result, go ahead and process as normal, if it produces an error, throw it, return type of main() reflects this throw 
+    // ? says if the function produces a result, go ahead and process as normal, if it produces an error, throw it, return type of main() reflects this throw
 
     // Figure out geometry of frame.
     let mut width = 0;
@@ -115,10 +117,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut enc = Encoder::new();
 
-    // Set up arithmetic coding context(s)
-    let mut pixel_difference_pdf = VectorCountSymbolModel::new((0..=255).collect());
-
-    // difference between two 8 bit numbers can be represented as an 8 bit integer (forward difference around the circle)
+    // stores distinct symbol models for different regions of the frame
+    // increasing the resolution parameter divides the frame into more regions 
+    // which should increase compression in theory
+    let mut region_map = RegionEncodingMap::new(height, width, 50);
 
     // Process frames
     for frame in iter.filter_frames() {
@@ -134,19 +136,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Process pixels in row major order.
             for r in 0..height {
                 for c in 0..width {
-                    let pixel_index = (r * width + c) as usize; // frame is actually a one dimensional vector
+                    let pixel = (r, c);
+                    let pixel_index = (r * width + c) as usize;
+                    // get the symbol model for the region this pixel is apart of
+                    let pixel_difference_pdf = region_map.get_symbol_model(pixel);
 
                     // Encode difference with same pixel in prior frame.
                     // Normalize and modulate difference to 8-bit range.
                     let pixel_difference = (((current_frame[pixel_index] as i32)
                         - (prior_frame[pixel_index] as i32))
-                        + 256) // takes every negative difference and turns it into a positive difference (da circle)
-                        % 256; // positive differences unaffected by the calculation
+                        + 256)
+                        % 256;
 
-                    enc.encode(&pixel_difference, &pixel_difference_pdf, &mut bw);
+                    enc.encode(&pixel_difference, pixel_difference_pdf, &mut bw);
 
-                    // Update context
-                    pixel_difference_pdf.incr_count(&pixel_difference); // adaptive
+                    // Update context (only for the symbol model of this region)
+                    region_map.incr_count_regional(pixel, &pixel_difference); // adaptive
                 }
             }
 
@@ -195,8 +200,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Set up initial prior frame as uniform medium gray
         let mut prior_frame = vec![128 as u8; (width * height) as usize];
 
-        'outer_loop: 
-        for frame in iter.filter_frames() {
+        'outer_loop: for frame in iter.filter_frames() {
             if frame.frame_num < skip_count + count {
                 if verbose {
                     print!("Checking frame: {} ... ", frame.frame_num);
@@ -208,10 +212,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 for r in 0..height {
                     for c in 0..width {
                         let pixel_index = (r * width + c) as usize;
-                        let decoded_pixel_difference = dec.decode(&pixel_difference_pdf, &mut br).to_owned();
+                        let decoded_pixel_difference =
+                            dec.decode(&pixel_difference_pdf, &mut br).to_owned();
                         pixel_difference_pdf.incr_count(&decoded_pixel_difference);
 
-                        let pixel_value = (prior_frame[pixel_index] as i32 + decoded_pixel_difference) % 256;
+                        let pixel_value =
+                            (prior_frame[pixel_index] as i32 + decoded_pixel_difference) % 256;
 
                         if pixel_value != current_frame[pixel_index] as i32 {
                             println!(
