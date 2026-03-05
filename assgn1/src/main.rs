@@ -18,7 +18,6 @@ use bitbit::MSB;
 
 use toy_ac::decoder::Decoder;
 use toy_ac::encoder::Encoder;
-use toy_ac::symbol_model::VectorCountSymbolModel;
 
 use ffmpeg_sidecar::event::StreamTypeSpecificData::Video;
 
