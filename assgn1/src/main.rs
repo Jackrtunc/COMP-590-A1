@@ -42,7 +42,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut count = 10;
 
     // Resolution for the regional encoding
-    let resolution = 50;
+    let resolution = 60;
+    println!("Regional encoding resolution: {}", resolution);
 
     let mut data_folder_path = get_workspace_root();
     data_folder_path.push("data");
