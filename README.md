@@ -27,7 +27,7 @@ and passed it into the encoder instead of the old model.
 
 I experimented with different values for the resolution parameter but found that resolution = 50 provided the best compression ratio (2.72) compared to the original's 2.37.
 
-## Cat.mp4
+### Cat.mp4
 
 I imported a video of a cat jumping off a piano for additional testing. It has significantly less motion than the bourne clip since there are no jump cuts. 
 
