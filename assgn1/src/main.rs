@@ -41,6 +41,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut skip_count = 0;
     let mut count = 10;
 
+    // Resolution for the regional encoding
+    let resolution = 50;
+
     let mut data_folder_path = get_workspace_root();
     data_folder_path.push("data");
 
@@ -119,7 +122,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // stores distinct symbol models for different regions of the frame
     // increasing the resolution parameter divides the frame into more regions 
     // which should increase compression in theory
-    let mut region_map = RegionEncodingMap::new(height, width, 50);
+    let mut region_map = RegionEncodingMap::new(height, width, resolution);
 
     // Process frames
     for frame in iter.filter_frames() {
@@ -194,7 +197,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let mut dec = Decoder::new();
 
-        let mut region_map = RegionEncodingMap::new(height, width, 50);
+        let mut region_map = RegionEncodingMap::new(height, width, resolution);
 
         // Set up initial prior frame as uniform medium gray
         let mut prior_frame = vec![128 as u8; (width * height) as usize];
